@@ -11,21 +11,19 @@ from backend.routes.recommendation import router as recommendation_router
 app = FastAPI()
 
 # CORS Configuration
+from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
+        "https://skill-matching-engine-wheat.vercel.app",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
-        "https://skill-matching-engine-4.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Register Routers
 app.include_router(auth_router)
 app.include_router(employee_router)
