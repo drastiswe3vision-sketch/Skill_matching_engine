@@ -90,53 +90,53 @@ def create_task(task: TaskModel):
 # RUN AUTOMATIC TASK ASSIGNMENT ENGINE
 # =====================================================
 
+
 @router.post("/run-task-assignment")
 def run_task_assignment():
 
-    """
-    Run the same AI assignment pipeline used by:
-    python -m backend.ai_engine.run_engine
-    """
-
     project_root = Path(__file__).resolve().parents[2]
 
-    try:
+    print("====================================", flush=True)
+    print("STARTING TASK ASSIGNMENT ENGINE", flush=True)
+    print("PROJECT ROOT:", project_root, flush=True)
 
+    try:
         result = subprocess.run(
             [sys.executable, "-m", "backend.ai_engine.run_engine"],
             cwd=str(project_root),
-            capture_output=True,
-            text=True,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
             timeout=900,
             check=False,
         )
 
     except subprocess.TimeoutExpired:
+        print("TASK ASSIGNMENT TIMED OUT", flush=True)
 
         raise HTTPException(
             status_code=504,
-            detail="Task assignment took too long. Please check the backend logs.",
+            detail="Task assignment took too long."
         )
 
     except Exception as exc:
+        print("ENGINE START ERROR:", str(exc), flush=True)
 
         raise HTTPException(
             status_code=500,
-            detail=f"Unable to start the task assignment engine: {exc}",
+            detail=f"Unable to start task assignment engine: {exc}"
         )
 
+    print("ENGINE RETURN CODE:", result.returncode, flush=True)
+
     if result.returncode != 0:
-
-        error_output = (
-            result.stderr or result.stdout or "Unknown engine error"
-        ).strip()
-
         raise HTTPException(
             status_code=500,
-            detail=f"Task assignment engine failed: {error_output[-3000:]}",
+            detail="Task assignment engine failed. Check Render logs."
         )
 
     assigned_tasks = get_admin_task_assignments()
+
+    print("ASSIGNED TASK COUNT:", len(assigned_tasks), flush=True)
 
     return {
         "message": "Task assignment completed successfully.",
