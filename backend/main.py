@@ -9,6 +9,12 @@ from backend.routes.recommendation import router as recommendation_router
 
 # Create FastAPI app FIRST
 app = FastAPI()
+@app.get("/")
+def home():
+    return {
+        "status": "success",
+        "message": "Skill Matching Engine API is running"
+    }
 
 # CORS Configuration
 from fastapi.middleware.cors import CORSMiddleware
