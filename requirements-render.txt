@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+numpy
+pandas
+scikit-learn
+xgboost
+transformers
+safetensors
+supabase
+python-dotenv
+google-genai
+google-generativeai
+tqdm
+
+torch==2.12.0+cpu

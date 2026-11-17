@@ -1,0 +1,1 @@
+backend/BAAI/models/bge_finetuned/best/model.safetensors filter=lfs diff=lfs merge=lfs -text
