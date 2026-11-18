@@ -1,4 +1,6 @@
+
 from backend.BAAI.fine_tuning.flow.inference.model_loader import ModelLoader
+
 from backend.ai_engine.models.employee_embeddings import (
     generate_employee_embeddings,
 )
@@ -33,148 +35,129 @@ from backend.ai_engine.services.task_completed_service import (
 )
 
 
+def log_step(message):
+    print("\n" + "=" * 60, flush=True)
+    print(message, flush=True)
+    print("=" * 60, flush=True)
+
+
 # =====================================================
-# STEP 0 : CHECK FOR COMPLETED TASKS
-# -----------------------------------------------------
-# Moves completed tasks from the active assignment table
-# and updates their status before starting a new
-# recommendation cycle.
+# STEP 0: COMPLETED TASKS
 # =====================================================
 
-# print("\n" + "=" * 70)
-# print("CHECKING COMPLETED TASKS")
-# print("=" * 70)
+log_step("STEP 0: CHECKING COMPLETED TASKS")
 
 move_completed_tasks()
 
+print("Completed-task processing finished.", flush=True)
+
 
 # =====================================================
-# STEP 1 : GENERATE EMPLOYEE EMBEDDINGS
-# -----------------------------------------------------
-# Converts every employee profile into a vector
-# representation using the embedding model and stores
-# the vectors inside Supabase.
+# STEP 1: EMPLOYEE EMBEDDINGS
 # =====================================================
 
-print("\n" + "=" * 70)
-print("GENERATING EMPLOYEE EMBEDDINGS")
-print("=" * 70)
+log_step("STEP 1: GENERATING EMPLOYEE EMBEDDINGS")
 
 generate_employee_embeddings()
 
+print("Employee embeddings generated.", flush=True)
+
+
 # =====================================================
-# STEP 2 : GENERATE TASK EMBEDDINGS
-# -----------------------------------------------------
-# Converts every pending task into an embedding vector
-# and stores the vectors inside Supabase.
-# Only tasks with status = "Pending" are processed.
+# STEP 2: TASK EMBEDDINGS
 # =====================================================
 
-print("\n" + "=" * 70)
-print("GENERATING TASK EMBEDDINGS")
-print("=" * 70)
+log_step("STEP 2: GENERATING TASK EMBEDDINGS")
 
 generate_task_embeddings()
-# Release BGE model from RAM after embedding generation
+
+print("Task embeddings generated.", flush=True)
+
+
+# =====================================================
+# STEP 3: UNLOAD BGE MODEL
+# =====================================================
+
+log_step("STEP 3: UNLOADING BGE MODEL")
+
 ModelLoader.unload()
 
+print("BGE model unloaded.", flush=True)
+
 
 # =====================================================
-# STEP 3 : FETCH STORED VECTORS
-# -----------------------------------------------------
-# Retrieves employee and task embeddings from the
-# vector database for similarity calculation.
-#
-# DEBUG
-# Uncomment the print statements below if vector
-# statistics are required.
+# STEP 4: FETCH VECTORS
 # =====================================================
+
+log_step("STEP 4: FETCHING STORED VECTORS")
 
 employee_vectors = get_employee_vectors()
+
+print(
+    f"Employee vectors fetched: {len(employee_vectors)}",
+    flush=True,
+)
+
 task_vectors = get_task_vectors()
 
-# print("\n" + "=" * 70)
-# print("FETCHING STORED VECTORS")
-# print("=" * 70)
-# print(f"Employee Vectors : {len(employee_vectors)}")
-# print(f"Task Vectors     : {len(task_vectors)}")
+print(
+    f"Task vectors fetched: {len(task_vectors)}",
+    flush=True,
+)
 
 
 # =====================================================
-# STEP 4 : GENERATE RECOMMENDATIONS
-# -----------------------------------------------------
-# Calculates cosine similarity between every employee
-# embedding and every task embedding to generate the
-# Employee ↔ Task similarity matrix.
-#
-# DEBUG
-# Uncomment the print statements below to display
-# recommendation statistics.
+# STEP 5: GENERATE RECOMMENDATIONS
 # =====================================================
+
+log_step("STEP 5: GENERATING RECOMMENDATIONS")
 
 recommendations = generate_recommendations(
     employee_vectors,
     task_vectors,
 )
 
-# print("\n" + "=" * 70)
-# print("GENERATING RECOMMENDATIONS")
-# print("=" * 70)
-# print(f"Recommendations Generated : {len(recommendations)}")
+print("Recommendation generation completed.", flush=True)
 
 
 # =====================================================
-# STEP 5 : STORE RECOMMENDATIONS
-# -----------------------------------------------------
-# Saves the generated similarity matrix into the
-# employee_task_match table.
-#
-# DEBUG
-# Uncomment the print statements below to confirm
-# recommendation storage.
+# STEP 6: SAVE RECOMMENDATIONS
 # =====================================================
+
+log_step("STEP 6: SAVING RECOMMENDATIONS")
 
 save_recommendations(recommendations)
 
-# print("\n" + "=" * 70)
-# print("RECOMMENDATIONS STORED SUCCESSFULLY")
-# print("=" * 70)
+print("Recommendations saved.", flush=True)
 
 
 # =====================================================
-# STEP 6 : ASSIGN TASKS
-# -----------------------------------------------------
-# Uses the similarity matrix together with workload
-# calculations to determine the best employee for each
-# pending task.
+# STEP 7: ASSIGN TASKS
 # =====================================================
 
-print("\n" + "=" * 70)
-print("ASSIGNING TASKS")
-print("=" * 70)
+log_step("STEP 7: ASSIGNING TASKS")
 
 assignments = assign_tasks()
 
-print(f"Assignments Generated : {len(assignments)}")
+print(
+    f"Assignments generated: {len(assignments)}",
+    flush=True,
+)
 
 
 # =====================================================
-# STEP 7 : STORE FINAL ASSIGNMENTS
-# -----------------------------------------------------
-# Stores the final task assignments into the
-# task_assignment table for frontend consumption.
+# STEP 8: SAVE ASSIGNMENTS
 # =====================================================
+
+log_step("STEP 8: SAVING ASSIGNMENTS")
 
 save_assignments(assignments)
 
+print("Assignments saved.", flush=True)
+
 
 # =====================================================
-# PIPELINE COMPLETED
-# -----------------------------------------------------
-# Indicates that the complete AI assignment pipeline
-# executed successfully.
+# COMPLETED
 # =====================================================
 
-print("\n" + "=" * 70)
-print("AI PIPELINE COMPLETED SUCCESSFULLY")
-print("=" * 70)
+log_step("AI PIPELINE COMPLETED SUCCESSFULLY")
