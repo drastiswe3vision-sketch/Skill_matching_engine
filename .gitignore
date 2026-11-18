@@ -93,5 +93,9 @@ checkpoint-*/
 !**/vocab.txt
 !**/merges.txt
 **/train_pairs.csv
+<<<<<<< HEAD
 # Allow fine-tuned BGE model weights
+=======
+
+>>>>>>> a03c31e (Add fine-tuned BGE model using Git LFS)
 !**/model.safetensors
