@@ -93,3 +93,6 @@ checkpoint-*/
 !**/vocab.txt
 !**/merges.txt
 **/train_pairs.csv
+
+# Allow fine-tuned BGE model weights
+!backend/BAAI/models/bge_finetuned/best/model.safetensors
