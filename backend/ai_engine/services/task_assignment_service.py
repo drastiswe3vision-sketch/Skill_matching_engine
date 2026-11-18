@@ -112,7 +112,7 @@ def assign_tasks():
             if float(row["similarity_score"]) < 20:
                 continue
 
-        task_candidates.append(row)
+            task_candidates.append(row)
 
         if not task_candidates:
             continue
