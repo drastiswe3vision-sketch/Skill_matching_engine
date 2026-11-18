@@ -68,7 +68,6 @@ Thumbs.db
 # ==========================================
 
 # Ignore all Hugging Face model weights
-**/model.safetensors
 **/pytorch_model.bin
 **/tf_model.h5
 **/flax_model.msgpack
