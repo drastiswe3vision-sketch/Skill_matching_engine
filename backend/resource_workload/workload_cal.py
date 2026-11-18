@@ -385,8 +385,10 @@ def calculate_employee_scores(
 # -----------------------------
 # FETCH TOTAL ASSIGNED DAYS
 # -----------------------------
+
 def get_total_assigned_days(emp_id):
     try:
+        # Step 1: Fetch assigned task IDs for this employee
         assignment_response = (
             supabase
             .table("task_assignment")
@@ -401,9 +403,11 @@ def get_total_assigned_days(emp_id):
             for row in assignment_response.data
         ]
 
+        # No assigned tasks
         if not task_ids:
             return 0
 
+        # Step 2: Fetch duration_days from tasks table
         tasks_response = (
             supabase
             .table("tasks")
@@ -412,10 +416,13 @@ def get_total_assigned_days(emp_id):
             .execute()
         )
 
-        return sum(
+        # Step 3: Calculate total assigned days
+        total_assigned_days = sum(
             task.get("duration_days") or 0
             for task in tasks_response.data
         )
+
+        return total_assigned_days
 
     except Exception as e:
         print(f"Assigned days error: {e}")
