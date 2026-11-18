@@ -1,12 +1,19 @@
-from datetime import datetime
+
+from datetime import datetime, date
+
 from database.supabase_client import supabase
+
 from backend.resource_workload.workload_service import (
     generate_employee_workload,
 )
+
+
 # ==========================================================
 # Priority Score
 # ==========================================================
+
 def get_priority_score(priority):
+
     priority_map = {
         "Critical": 100,
         "High": 80,
@@ -14,11 +21,16 @@ def get_priority_score(priority):
         "Low": 40,
         "Very Low": 20
     }
+
     return priority_map.get(priority, 50)
+
+
 # ==========================================================
 # Complexity Score
 # ==========================================================
+
 def get_complexity_score(complexity):
+
     complexity_map = {
         "Very Easy": 50,
         "Easy": 60,
@@ -26,47 +38,68 @@ def get_complexity_score(complexity):
         "Hard": 90,
         "Expert": 100
     }
+
     return complexity_map.get(complexity, 70)
+
+
 # ==========================================================
 # Deadline Urgency Score
 # ==========================================================
+
 def get_deadline_score(deadline):
-    deadline_date = datetime.strptime(
-        deadline,
-        "%Y-%m-%d"
-    )
-    days_left = (
-        deadline_date -
-        datetime.today()
-    ).days
+
+    if not deadline:
+        return 50
+
+    if isinstance(deadline, str):
+        deadline_date = datetime.strptime(
+            deadline,
+            "%Y-%m-%d"
+        ).date()
+    else:
+        deadline_date = deadline
+
+    days_left = (deadline_date - date.today()).days
+
     if days_left <= 2:
         return 100
+
     elif days_left <= 5:
         return 90
+
     elif days_left <= 10:
         return 80
+
     elif days_left <= 15:
         return 70
+
     elif days_left <= 20:
         return 60
+
     return 50
+
+
 # ==========================================================
 # Intelligent Task Assignment
+# Highest Similarity Selection
 # ==========================================================
-# ==========================================================
-# Intelligent Task Assignment
-# ==========================================================
+
 def assign_tasks():
 
     # ----------------------------------------
     # Load similarity results
     # ----------------------------------------
-    matches = (
+
+    matches_response = (
         supabase
         .table("employee_task_match")
-        .select("*")
+        .select(
+            "emp_id, name, task_id, task_name, similarity_score"
+        )
         .execute()
-    ).data
+    )
+
+    matches = matches_response.data or []
 
     if not matches:
         print("No employee matches found.")
@@ -75,13 +108,18 @@ def assign_tasks():
     # ----------------------------------------
     # Load Pending Tasks
     # ----------------------------------------
-    pending_tasks = (
+
+    tasks_response = (
         supabase
         .table("tasks")
-        .select("*")
+        .select(
+            "id, task_name, priority, complexity, deadline, starting_date"
+        )
         .eq("status", "Pending")
         .execute()
-    ).data
+    )
+
+    pending_tasks = tasks_response.data or []
 
     if not pending_tasks:
         print("No pending tasks.")
@@ -90,34 +128,77 @@ def assign_tasks():
     final_assignments = []
 
     # Prevent one employee from receiving
-    # multiple NEW tasks in THIS backend run.
+    # multiple NEW tasks in this execution.
+
     assigned_employees = set()
 
     # ======================================================
     # LOOP TASK BY TASK
     # ======================================================
+
     for task in pending_tasks:
+
+        task_id = task["id"]
+        task_name = task["task_name"]
+
+        # ----------------------------------------
+        # Validate Deadline
+        # ----------------------------------------
+
+        if not task.get("deadline"):
+
+            print(
+                f"[SKIPPED] {task_name}: "
+                "Deadline is missing."
+            )
+
+            continue
+
+        try:
+
+            urgency_score = get_deadline_score(
+                task["deadline"]
+            )
+
+        except (ValueError, TypeError) as e:
+
+            print(
+                f"[SKIPPED] {task_name}: "
+                f"Invalid deadline - {e}"
+            )
+
+            continue
 
         # ----------------------------------------
         # All employee matches for THIS task
         # ----------------------------------------
+
         task_candidates = []
 
         for row in matches:
 
-            if row["task_id"] != task["id"]:
+            if str(row["task_id"]) != str(task_id):
                 continue
 
-    # Ignore employees with similarity below 20%
-            if float(row["similarity_score"]) < 20:
+            similarity = float(row["similarity_score"])
+
+            # Ignore similarity below 20%
+
+            if similarity < 20:
                 continue
 
             task_candidates.append(row)
 
         if not task_candidates:
+            print(
+                f"No eligible employee found for {task_name}"
+            )
             continue
 
+        # ----------------------------------------
         # Highest similarity first
+        # ----------------------------------------
+
         task_candidates.sort(
             key=lambda x: float(x["similarity_score"]),
             reverse=True
@@ -125,31 +206,49 @@ def assign_tasks():
 
         assigned = False
 
-        # ----------------------------------------
-        # Find best available employee
-        # ----------------------------------------
+        # ==================================================
+        # FIND BEST AVAILABLE EMPLOYEE
+        # ==================================================
+
         for row in task_candidates:
+
+            emp_id = row["emp_id"]
+
+            employee_name = row["name"]
+
+            similarity_score = float(
+                row["similarity_score"]
+            )
 
             # Already received a task during
             # THIS backend execution
-            if row["emp_id"] in assigned_employees:
+
+            if emp_id in assigned_employees:
                 continue
+
+            # ----------------------------------------
+            # Calculate workload
+            # ----------------------------------------
 
             try:
 
                 workload = generate_employee_workload(
-                    emp_id=row["emp_id"],
-                    task_id=task["id"],
-                    similarity_score=float(row["similarity_score"])
+                    emp_id=emp_id,
+                    task_id=task_id,
+                    similarity_score=similarity_score
                 )
 
             except Exception as e:
 
                 print(
-                    f"Workload Error ({row['name']}): {e}"
+                    f"Workload Error ({employee_name}): {e}"
                 )
 
                 continue
+
+            # ----------------------------------------
+            # Calculate assignment scores
+            # ----------------------------------------
 
             priority_score = get_priority_score(
                 task["priority"]
@@ -159,13 +258,9 @@ def assign_tasks():
                 task["complexity"]
             )
 
-            urgency_score = get_deadline_score(
-                task["deadline"]
-            )
-
             final_score = (
 
-                float(row["similarity_score"]) * 0.45
+                similarity_score * 0.45
 
                 +
 
@@ -186,29 +281,45 @@ def assign_tasks():
             )
 
             # ----------------------------------------
-            # Update task
+            # Update task status
             # ----------------------------------------
-            (
+
+            update_response = (
                 supabase
                 .table("tasks")
                 .update({
                     "status": "Assigned"
                 })
-                .eq("id", task["id"])
+                .eq("id", task_id)
+                .eq("status", "Pending")
                 .execute()
             )
 
+            if not update_response.data:
+
+                print(
+                    f"[WARNING] Could not assign {task_name}. "
+                    "Task may no longer be Pending."
+                )
+
+                assigned = True
+                break
+
+            # ----------------------------------------
+            # Store final assignment
+            # ----------------------------------------
+
             final_assignments.append({
 
-                "emp_id": row["emp_id"],
+                "emp_id": emp_id,
 
-                "employee_name": row["name"],
+                "employee_name": employee_name,
 
-                "task_id": task["id"],
+                "task_id": task_id,
 
-                "task_name": task["task_name"],
+                "task_name": task_name,
 
-                "similarity_score": float(row["similarity_score"]),
+                "similarity_score": similarity_score,
 
                 "workload_score": workload["workload_score"],
 
@@ -228,25 +339,38 @@ def assign_tasks():
 
             })
 
-            assigned_employees.add(row["emp_id"])
+            assigned_employees.add(emp_id)
 
             print(
-                f"[SUCCESS] {row['name']} -> {task['task_name']} "
-                f"Final Score : {round(final_score,2)}"
+                f"[SUCCESS] {employee_name} -> {task_name} "
+                f"Final Score: {round(final_score, 2)}"
             )
 
             assigned = True
+
+            # IMPORTANT:
+            # Keep highest-similarity selection.
+            # Do not evaluate lower-ranked candidates
+            # after a successful assignment.
+
             break
 
         if not assigned:
+
             print(
-                f"No available employee for {task['task_name']}"
+                f"No available employee for {task_name}"
             )
+
+    # ======================================================
+    # FINAL OUTPUT
+    # ======================================================
 
     print("\n" + "=" * 70)
     print("SMART TASK ASSIGNMENT COMPLETED")
     print("=" * 70)
-    print(f"Assignments : {len(final_assignments)}")
+
+    print(f"Assignments: {len(final_assignments)}")
+
     print("=" * 70)
 
     return final_assignments
