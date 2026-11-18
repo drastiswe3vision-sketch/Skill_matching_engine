@@ -1,3 +1,4 @@
+from backend.BAAI.fine_tuning.flow.inference.model_loader import ModelLoader
 from backend.ai_engine.models.employee_embeddings import (
     generate_employee_embeddings,
 )
@@ -60,6 +61,8 @@ print("GENERATING EMPLOYEE EMBEDDINGS")
 print("=" * 70)
 
 generate_employee_embeddings()
+# Release BGE model from RAM after embedding generation
+ModelLoader.unload()
 
 
 # =====================================================
