@@ -1,21 +1,10 @@
 
-"""
-recommendation_storage_service.py
-
-Save employee-task recommendations to Supabase
-using batched upsert operations.
-"""
-
 from database.supabase_client import supabase
 
 
 def save_recommendations(recommendations):
 
-    if not recommendations:
-        print("\n[INFO] No recommendations to save.")
-        return
-
-    # Fetch employee names only once
+    # Fetch employee names once
     employee_response = (
         supabase
         .table("employee_profiles")
@@ -25,11 +14,13 @@ def save_recommendations(recommendations):
 
     employee_names = {
         employee["emp_id"]: employee["name"]
-        for employee in employee_response.data
+        for employee in (employee_response.data or [])
     }
 
     batch_size = 100
     batch = []
+
+    total_saved = 0
 
     print("\nSaving Recommendations...\n")
 
@@ -40,7 +31,9 @@ def save_recommendations(recommendations):
         employee_name = employee_names.get(emp_id)
 
         if employee_name is None:
-            print(f"[WARNING] Employee name not found for ID: {emp_id}")
+            print(
+                f"[WARNING] Employee name not found: {emp_id}"
+            )
             continue
 
         batch.append({
@@ -59,11 +52,15 @@ def save_recommendations(recommendations):
                 on_conflict="emp_id,task_id"
             ).execute()
 
-            print(f"[SUCCESS] Saved {len(batch)} recommendations")
+            total_saved += len(batch)
+
+            print(
+                f"[SUCCESS] Total saved: {total_saved}"
+            )
 
             batch.clear()
 
-    # Save remaining records
+    # Save remaining recommendations
     if batch:
 
         supabase.table("employee_task_match").upsert(
@@ -71,6 +68,11 @@ def save_recommendations(recommendations):
             on_conflict="emp_id,task_id"
         ).execute()
 
-        print(f"[SUCCESS] Saved {len(batch)} recommendations")
+        total_saved += len(batch)
 
-    print("\n[SUCCESS] Recommendations saved successfully.")
+        batch.clear()
+
+    print(
+        f"\n[SUCCESS] Total recommendations saved: "
+        f"{total_saved}"
+    )
