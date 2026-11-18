@@ -1,10 +1,9 @@
+
 """
-full file changes by drashti
 embedding_generator.py
 
 Generate embeddings using the fine-tuned BGE model.
-Pooling strategy MUST match what was used during training
-(see train.py --pooling, default = "cls").
+Pooling strategy MUST match what was used during training.
 """
 
 import torch
@@ -12,10 +11,8 @@ import torch.nn.functional as F
 
 from backend.BAAI.fine_tuning.flow.inference.model_loader import ModelLoader
 
-# Set this to whatever pooling was actually used when train.py was run.
-# Default in train.py is "cls" -- change to "mean" only if training was
-# explicitly run with --pooling mean.
 POOLING_MODE = "cls"
+MAX_SEQ_LENGTH = 256
 
 
 class EmbeddingGenerator:
@@ -51,21 +48,21 @@ class EmbeddingGenerator:
             text,
             padding=True,
             truncation=True,
-            max_length=512,
+            max_length=MAX_SEQ_LENGTH,
             return_tensors="pt"
         )
 
-        with torch.no_grad():
+        with torch.inference_mode():
             model_output = model(**encoded_input)
 
-        if POOLING_MODE == "cls":
-            embedding = EmbeddingGenerator._cls_pooling(model_output)
-        else:
-            embedding = EmbeddingGenerator._mean_pooling(
-                model_output,
-                encoded_input["attention_mask"]
-            )
+            if POOLING_MODE == "cls":
+                embedding = EmbeddingGenerator._cls_pooling(model_output)
+            else:
+                embedding = EmbeddingGenerator._mean_pooling(
+                    model_output,
+                    encoded_input["attention_mask"]
+                )
 
-        embedding = F.normalize(embedding, p=2, dim=1)
+            embedding = F.normalize(embedding, p=2, dim=1)
 
         return embedding.squeeze(0)
