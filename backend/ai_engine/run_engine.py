@@ -61,9 +61,6 @@ print("GENERATING EMPLOYEE EMBEDDINGS")
 print("=" * 70)
 
 generate_employee_embeddings()
-# Release BGE model from RAM after embedding generation
-ModelLoader.unload()
-
 
 # =====================================================
 # STEP 2 : GENERATE TASK EMBEDDINGS
@@ -78,6 +75,8 @@ print("GENERATING TASK EMBEDDINGS")
 print("=" * 70)
 
 generate_task_embeddings()
+# Release BGE model from RAM after embedding generation
+ModelLoader.unload()
 
 
 # =====================================================
