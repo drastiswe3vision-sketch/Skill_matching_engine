@@ -96,3 +96,4 @@ checkpoint-*/
 
 # Allow fine-tuned BGE model weights
 !backend/BAAI/models/bge_finetuned/best/model.safetensors
+!**/model.safetensors
