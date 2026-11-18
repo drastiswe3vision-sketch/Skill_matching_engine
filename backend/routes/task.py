@@ -102,7 +102,7 @@ def run_task_assignment():
 
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "backend.ai_engine.run_engine"],
+            [sys.executable, "-u", "-m", "backend.ai_engine.run_engine"],
             cwd=str(project_root),
             stdout=sys.stdout,
             stderr=sys.stderr,
