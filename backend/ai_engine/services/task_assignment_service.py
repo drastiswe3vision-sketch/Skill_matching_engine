@@ -5,8 +5,8 @@ from database.supabase_client import supabase
 
 from backend.resource_workload.workload_service import (
     generate_employee_workload,
+    save_employee_workload,
 )
-
 
 # ==========================================================
 # Priority Score
@@ -204,6 +204,7 @@ def assign_tasks():
             reverse=True
         )
 
+
         assigned = False
 
         # ==================================================
@@ -213,15 +214,11 @@ def assign_tasks():
         for row in task_candidates:
 
             emp_id = row["emp_id"]
-
             employee_name = row["name"]
 
             similarity_score = float(
                 row["similarity_score"]
             )
-
-            # Already received a task during
-            # THIS backend execution
 
             if emp_id in assigned_employees:
                 continue
@@ -231,7 +228,6 @@ def assign_tasks():
             # ----------------------------------------
 
             try:
-
                 workload = generate_employee_workload(
                     emp_id=emp_id,
                     task_id=task_id,
@@ -239,11 +235,9 @@ def assign_tasks():
                 )
 
             except Exception as e:
-
                 print(
                     f"Workload Error ({employee_name}): {e}"
                 )
-
                 continue
 
             # ----------------------------------------
@@ -259,84 +253,74 @@ def assign_tasks():
             )
 
             final_score = (
-
                 similarity_score * 0.45
-
-                +
-
-                workload["workload_score"] * 0.25
-
-                +
-
-                priority_score * 0.15
-
-                +
-
-                urgency_score * 0.10
-
-                +
-
-                complexity_score * 0.05
-
+                + workload["workload_score"] * 0.25
+                + priority_score * 0.15
+                + urgency_score * 0.10
+                + complexity_score * 0.05
             )
 
             # ----------------------------------------
             # Update task status
             # ----------------------------------------
 
-            update_response = (
-                supabase
-                .table("tasks")
-                .update({
-                    "status": "Assigned"
-                })
-                .eq("id", task_id)
-                .eq("status", "Pending")
-                .execute()
-            )
+            try:
+                update_response = (
+                    supabase
+                    .table("tasks")
+                    .update({"status": "Assigned"})
+                    .eq("id", task_id)
+                    .eq("status", "Pending")
+                    .select("id")
+                    .execute()
+                )
+
+            except Exception as e:
+                print(
+                    f"[ERROR] Task update failed for "
+                    f"{task_name}: {e}"
+                )
+                continue
 
             if not update_response.data:
-
                 print(
                     f"[WARNING] Could not assign {task_name}. "
                     "Task may no longer be Pending."
                 )
-
                 assigned = True
                 break
+
+            # ----------------------------------------
+            # Save workload AFTER successful assignment
+            # ----------------------------------------
+
+            try:
+                save_employee_workload(workload)
+
+            except Exception as e:
+                print(
+                    f"[WARNING] Task assigned, but workload "
+                    f"could not be saved for {employee_name}: {e}"
+                )
 
             # ----------------------------------------
             # Store final assignment
             # ----------------------------------------
 
             final_assignments.append({
-
                 "emp_id": emp_id,
-
                 "employee_name": employee_name,
-
                 "task_id": task_id,
-
                 "task_name": task_name,
-
                 "similarity_score": similarity_score,
-
                 "workload_score": workload["workload_score"],
-
                 "priority": task["priority"],
-
                 "complexity": task["complexity"],
-
                 "deadline": task["deadline"],
-
                 "priority_score": priority_score,
-
                 "complexity_score": complexity_score,
-
                 "urgency_score": urgency_score,
-
                 "final_score": round(final_score, 2)
-
             })
 
             assigned_employees.add(emp_id)
@@ -348,18 +332,14 @@ def assign_tasks():
 
             assigned = True
 
-            # IMPORTANT:
             # Keep highest-similarity selection.
-            # Do not evaluate lower-ranked candidates
-            # after a successful assignment.
-
             break
 
         if not assigned:
-
             print(
                 f"No available employee for {task_name}"
             )
+
 
     # ======================================================
     # FINAL OUTPUT
