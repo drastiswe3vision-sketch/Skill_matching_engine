@@ -387,23 +387,36 @@ def calculate_employee_scores(
 # -----------------------------
 def get_total_assigned_days(emp_id):
     try:
-        response = (
+        assignment_response = (
             supabase
             .table("task_assignment")
-            .select("total_days")
+            .select("task_id")
             .eq("emp_id", emp_id)
             .eq("status", "Assigned")
             .execute()
         )
 
-        assigned_days = sum(
-            task.get("total_days") or 0
-            for task in response.data
+        task_ids = [
+            row["task_id"]
+            for row in assignment_response.data
+        ]
+
+        if not task_ids:
+            return 0
+
+        tasks_response = (
+            supabase
+            .table("tasks")
+            .select("duration_days")
+            .in_("id", task_ids)
+            .execute()
         )
 
-        return assigned_days
+        return sum(
+            task.get("duration_days") or 0
+            for task in tasks_response.data
+        )
 
     except Exception as e:
         print(f"Assigned days error: {e}")
         return 0
-    #parita 18-07
