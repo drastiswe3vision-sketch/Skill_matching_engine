@@ -38,3 +38,24 @@ class ModelLoader:
         print("[SUCCESS] Model loaded successfully")
 
         return cls._tokenizer, cls._model
+
+    @classmethod
+    def unload(cls):
+
+        import gc
+        import torch
+
+        if cls._model is not None:
+            del cls._model
+            cls._model = None
+
+        if cls._tokenizer is not None:
+            del cls._tokenizer
+            cls._tokenizer = None
+
+        gc.collect()
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        print("[SUCCESS] BGE model unloaded.")
